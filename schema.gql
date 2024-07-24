@@ -1,0 +1,28 @@
+type User {
+  id: ID!
+  stripe_customer_id: String
+  payment_link: String
+  username: String!
+  password: String!
+  payment_status: String
+}
+
+type Query {
+  getUser(id: ID!): User
+}
+
+type Mutation {
+  createUser(stripe_customer_id: String, payment_link: String, username: String!, password: String!, payment_status: String): User
+  updateUser(id: ID!, stripe_customer_id: String, payment_link: String, username: String, password: String, payment_status: String): User
+}
+
+type Subscription {
+  onPaymentStatusChanged(id: ID!): User
+    @aws_subscribe(mutations: ["updateUser"])
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}

@@ -1,18 +1,7 @@
 {
-  "type": "module",
   "name": "backend-stripe-poc",
   "version": "1.0.0",
-  "description": "appsync graphql api",
-  "author": "ricardo@durazno.io",
+  "description": "appsync real-time graphql api",
   "license": "UNLICENSED",
-  "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.40.0",
-    "@aws-sdk/lib-dynamodb": "^3.40.0"
-  },
-  "private": false,
-  "scripts": {
-    "zipCreate": "zip -r createUser.zip createUser.js node_modules package.json",
-    "zipGet": "zip -r getUser.zip getUser.js node_modules package.json",
-    "zipUpdate": "zip -r updateUser.zip updateUser.js node_modules package.json"
-  }
+  "private": false
 }
