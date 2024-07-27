@@ -1,0 +1,5 @@
+aws_region           = "us-west-2"
+lambda_function_name = "stripe-webhook"
+stripe_webhook_secret = "whsec_XXX"
+graphql_endpoint     = "XXX.appsync-api.us-west-2.amazonaws.com/graphql"
+api_key              = "da2-XXX"
