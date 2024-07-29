@@ -4,7 +4,6 @@ variable "aws_region" {
 
 variable "lambda_function_name" {
   description = "The name of the Lambda function"
-  default     = "profe-santi-stripe-webhook-copy"
 }
 
 variable "stripe_webhook_secret" {
@@ -15,6 +14,6 @@ variable "graphql_endpoint" {
   description = "GraphQL endpoint to update payment status"
 }
 
-variable "api_key" {
-  description = "API key for GraphQL endpoint"
+variable "arn_appsync_api" {
+  description = "ARN of the AppSync API"
 }

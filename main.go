@@ -16,7 +16,6 @@ import (
 var (
 	stripeSecret    = os.Getenv("STRIPE_WEBHOOK_SECRET")
 	graphqlEndpoint = os.Getenv("GRAPHQL_ENDPOINT")
-	apiKey          = os.Getenv("API_KEY")
 	userID          = "4d8ccbfd-50d8-4421-85e0-cc1c421d4a08"
 )
 
@@ -30,7 +29,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest}, err
 	}
 
-	// Handle the event
+	// Log the event
+	fmt.Println("Received event:", event)
+
+	// Handle the event (for example, "checkout.session.completed")
 	if event.Type == "checkout.session.completed" {
 		var session stripe.CheckoutSession
 		err := json.Unmarshal(event.Data.Raw, &session)
@@ -65,7 +67,6 @@ func updatePaymentStatus(userID string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", apiKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
