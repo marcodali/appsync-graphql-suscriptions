@@ -16,17 +16,36 @@ import (
 var (
 	stripeSecret    = os.Getenv("STRIPE_WEBHOOK_SECRET")
 	graphqlEndpoint = os.Getenv("GRAPHQL_ENDPOINT")
-	userID          = "4d8ccbfd-50d8-4421-85e0-cc1c421d4a08"
 )
 
-func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
+	// Log request method
+	fmt.Println("Request method:", request.RequestContext.HTTP.Method)
+
+	// Log request headers
+	fmt.Println("Received headers:")
+	for key, value := range request.Headers {
+		fmt.Printf("%s: %s\n", key, value)
+	}
+
+	// Log request body
+	fmt.Print("Request body:", request.Body)
+
 	// Verify webhook signature
 	payload := request.Body
-	sigHeader := request.Headers["Stripe-Signature"]
+	sigHeader, ok := request.Headers["stripe-signature"]
+	if !ok {
+		fmt.Println("Missing stripe-signature header")
+		return events.LambdaFunctionURLResponse{
+			StatusCode: http.StatusBadRequest,
+			Body:       "Missing stripe-signature header",
+		}, fmt.Errorf("webhook has no stripe-signature header")
+	}
 
 	event, err := webhook.ConstructEvent([]byte(payload), sigHeader, stripeSecret)
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest}, err
+		fmt.Println("Error constructing webhook event:", err)
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusBadRequest}, err
 	}
 
 	// Log the event
@@ -37,26 +56,37 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		var session stripe.CheckoutSession
 		err := json.Unmarshal(event.Data.Raw, &session)
 		if err != nil {
-			return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest}, err
+			fmt.Println("Error unmarshalling event data:", err)
+			return events.LambdaFunctionURLResponse{StatusCode: http.StatusBadRequest}, err
+		}
+
+		// Extract email from the session
+		email := session.Customer.Email
+		email2 := session.CustomerEmail
+		fmt.Print("Customer email:", email, "Email2:", email2, "Customer:", session.Customer, "Session:", session)
+		if email == "" {
+			fmt.Println("Customer email is missing in the event data")
+			return events.LambdaFunctionURLResponse{StatusCode: http.StatusBadRequest}, fmt.Errorf("customer email is missing in the event data")
 		}
 
 		// Call your GraphQL endpoint to update payment_status
-		err = updatePaymentStatus(userID)
+		err = updatePaymentStatus(email)
 		if err != nil {
-			return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+			fmt.Println("Error updating payment status:", err)
+			return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
 		}
 	}
 
-	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK}, nil
+	return events.LambdaFunctionURLResponse{StatusCode: http.StatusOK}, nil
 }
 
-func updatePaymentStatus(userID string) error {
+func updatePaymentStatus(email string) error {
 	query := fmt.Sprintf(`mutation MyMutation {
         updateUser(id: "%s", payment_status: "PAID") {
             id
             payment_status
         }
-    }`, userID)
+    }`, email)
 
 	jsonData := map[string]string{
 		"query": query,
