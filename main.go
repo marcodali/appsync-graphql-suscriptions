@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -16,21 +17,23 @@ import (
 var (
 	stripeSecret    = os.Getenv("STRIPE_WEBHOOK_SECRET")
 	graphqlEndpoint = os.Getenv("GRAPHQL_ENDPOINT")
+	apiKey          = os.Getenv("API_KEY")
 )
 
-func handler(request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
-	// Log request method
-	fmt.Println("Request method:", request.RequestContext.HTTP.Method)
-
-	// Log request headers
-	fmt.Println("Received headers:")
-	for key, value := range request.Headers {
-		fmt.Printf("%s: %s\n", key, value)
+func debugStripeEvent(event stripe.Event) {
+	// Parse event object as JSON and display its properties
+	data, err := json.MarshalIndent(event, "", "  ")
+	if err != nil {
+		fmt.Println("Error marshalling event:", err)
+		return
 	}
 
-	// Log request body
-	fmt.Print("Request body:", request.Body)
+	// Remove new lines and print the JSON data in one line
+	oneLineData := strings.ReplaceAll(string(data), "\n", " ")
+	fmt.Println("Event data:", oneLineData)
+}
 
+func handler(request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
 	// Verify webhook signature
 	payload := request.Body
 	sigHeader, ok := request.Headers["stripe-signature"]
@@ -48,33 +51,19 @@ func handler(request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLR
 		return events.LambdaFunctionURLResponse{StatusCode: http.StatusBadRequest}, err
 	}
 
-	// Log the event
-	fmt.Println("Received event:", event)
+	// debugStripeEvent(event)
 
-	// Handle the event (for example, "checkout.session.completed")
-	if event.Type == "checkout.session.completed" {
-		var session stripe.CheckoutSession
-		err := json.Unmarshal(event.Data.Raw, &session)
-		if err != nil {
-			fmt.Println("Error unmarshalling event data:", err)
-			return events.LambdaFunctionURLResponse{StatusCode: http.StatusBadRequest}, err
-		}
+	if event.Type != "checkout.session.completed" {
+		fmt.Println("Unhandled event type:", event.Type)
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusOK}, nil
+	}
 
-		// Extract email from the session
-		email := session.Customer.Email
-		email2 := session.CustomerEmail
-		fmt.Print("Customer email:", email, "Email2:", email2, "Customer:", session.Customer, "Session:", session)
-		if email == "" {
-			fmt.Println("Customer email is missing in the event data")
-			return events.LambdaFunctionURLResponse{StatusCode: http.StatusBadRequest}, fmt.Errorf("customer email is missing in the event data")
-		}
-
-		// Call your GraphQL endpoint to update payment_status
-		err = updatePaymentStatus(email)
-		if err != nil {
-			fmt.Println("Error updating payment status:", err)
-			return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
-		}
+	// Call your GraphQL endpoint to update payment_status
+	email := event.GetObjectValue("customer_details", "email")
+	err = updatePaymentStatus(email)
+	if err != nil {
+		fmt.Println("Error updating payment status:", err)
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	return events.LambdaFunctionURLResponse{StatusCode: http.StatusOK}, nil
@@ -97,6 +86,7 @@ func updatePaymentStatus(email string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -113,5 +103,6 @@ func updatePaymentStatus(email string) error {
 }
 
 func main() {
+	fmt.Println("func ver", "gacela")
 	lambda.Start(handler)
 }

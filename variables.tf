@@ -14,6 +14,6 @@ variable "graphql_endpoint" {
   description = "GraphQL endpoint to update payment status"
 }
 
-variable "arn_appsync_api" {
-  description = "ARN of the AppSync API"
+variable "api_key" {
+  description = "API key for accessing the AppSync endpoint"
 }
