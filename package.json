@@ -5,6 +5,7 @@
   "license": "UNLICENSED",
   "private": false,
   "scripts": {
+    "clean": "rm -rf bootstrap lambda-handler.zip",
     "build": "GOOS=linux GOARCH=amd64 go build -o bootstrap main.go && zip lambda-handler.zip bootstrap",
     "deploy": "terraform apply"
   }
